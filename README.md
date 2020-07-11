@@ -7,9 +7,9 @@ The ** syntax is used to pass keywords and values in dictionary form to a functi
 
 # Time Series vs. Linear
 
-For linear regression, we attempted to explain the variance of a continuous target variable via a set of independent predictor features. We assumed that there was no autocorrelation amongst our records.  In other words, we did not use the target variable of one row to predict that of another.
+For linear regression, we attempted to explain the variance of a continuous target variable via a set of **independent predictor features**. We assumed that there was no **autocorrelation** amongst our records.  In other words, we did not use the target variable of one row to predict that of another.
 
-In time series models, we make the opposite assumption.  We assume that a given value can best be predicted by its past values.
+In time series models, we make the opposite assumption.  We assume that a given value can best be predicted by its **past values**.
 
 We replace our features with past values of our target. 
 
@@ -20,22 +20,22 @@ The models we will cover in lecture include endogenous variables.
 
 Many statsmodels tools use <tt>endog</tt> to represent the incoming time series data in place of the constant <tt>y</tt>.<br>
 
-For more information, visit http://www.statsmodels.org/stable/endog_exog.html
+For more information and a nice **mneumonic**, visit http://www.statsmodels.org/stable/endog_exog.html
 
 # Datetime objects
 
 Datetime objects make our time series modeling lives easier.  They will allow us to perform essential data prep tasks with a few lines of code.  
 
-We need our timeseries index to be datetime objects, since our models will rely on being able to identify the previous chronological value.
-
-Let's import a Chicago dataset on gun related crimes. 
+We need our timeseries **index** to be datetime objects, since our models will rely on being able to identify the previous chronological value.
 
 There is a datetime [library](https://docs.python.org/2/library/datetime.html), and inside pandas there is a datetime module as well as a to_datetime() function.
 
 
-Let's import some data on gun violence in Chicago.
+Let's import some data on **gun violence in Chicago**.
 
-There are a few ways to reindex our series to datetime. 
+[source](https://data.cityofchicago.org/Public-Safety/Gun-Crimes-Heat-Map/iinq-m3rg)
+
+There are a few ways to **reindex** our series to datetime. 
 
 We can use the pd.to_datetime() method
 
@@ -90,7 +90,7 @@ When resampling, we have to provide a rule to resample by, and an aggregate func
 **To upsample** is to increase the frequency of the data of interest.  
 **To downsample** is to decrease the frequency of the data of interest.
 
-For our purposes, we will downsample, an  count the number of occurences per day.
+For our purposes, we will downsample, and  count the number of occurences per day.
 
 Our time series will consist of a series of counts of gun reports per day.
 
@@ -98,7 +98,7 @@ Let's visualize our timeseries with a plot.
 
 There seems to be some abnormal activity happening towards the end of our series.
 
-[sun-times](https://chicago.suntimes.com/crime/2020/6/8/21281998/chicago-deadliest-day-violence-murder-history-police-crime)
+**[sun-times](https://chicago.suntimes.com/crime/2020/6/8/21281998/chicago-deadliest-day-violence-murder-history-police-crime)**
 
 Let's treat the span of days from 5-31 to 6-03 as outliers. 
 
@@ -115,6 +115,10 @@ Let's proceed with the interpolated data
 Let's begin considering some models for our data.
 
 These are not useful for prediction just yet, but they will lead us towards our prediction models.
+
+Now that we've cleaned up a few data points, let's downsample to the week level.  
+
+# Visual Diagnostics with SMA and EWMA
 
 # Simple Moving Average
 
@@ -145,9 +149,8 @@ Moving averages capture some information about our timeseries.  They show us how
 
 Let's plot our rolling statistics with some different windows
 
-Especially with the yearly moving average, we can see that there is an upward trend in the mean of our data through 2017.   
+If we zoom in on our standard deviation, we can the variance of our data has quite a fluctuation at different moments in time.
 
-If we zoom in on our standard deviation, we can see also that there is a slight upward trend in our variance as well.
 
 ### Components of Time Series Data
 A time series in general is supposed to be affected by four main components, which can be separated from the observed data. These components are: *Trend, Cyclical, Seasonal and Irregular* components.
@@ -192,7 +195,7 @@ Here the null hypothesis is that the TS is non-stationary. If the ‘Test Statis
 
 As we concluded visually, our original timeseries does not pass the test of stationarity.
 
-### How to Stationarize time series data
+### How to stationarize time series data
 
 A series of steps can be taken to stationarize your data - also known -  as removing trends (linear trends, seasonaility/periodicity, etc - more details on transformations <a href='http://people.duke.edu/~rnau/whatuse.htm'>here</a>).
 
