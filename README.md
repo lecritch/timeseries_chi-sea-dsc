@@ -35,15 +35,32 @@ Let's import some data on **gun violence in Chicago**.
 
 [source](https://data.cityofchicago.org/Public-Safety/Gun-Crimes-Heat-Map/iinq-m3rg)
 
+Let's look at some summary stats:
+
+The data extracts the year of offense as its own columns.
+
+While this does show some interesting information that will be relevant to our time series analysis, we are going to get more granular.
+
+# Date Time Objects
+
+For time series modeling, the first step is to make sure that the index is a date time object.
+
 There are a few ways to **reindex** our series to datetime. 
 
 We can use the pd.to_datetime() method
 
 Or, we can parse the dates directly on import
 
-We've covered some of the fun abilities of datetime objects, including being able to extract componenets of the date like so:
+We've covered some of the fun abilities of datetime objects, including being able to extract components of the date like so:
 
-Now we will explore new abilities, such as **resampling**.
+We can easily see now see whether offenses happen, for example, during business hours.
+
+
+### With a partner, take five minutes ot play around with the datetime object, and make a plot that answers a time based question about our data.
+
+![pair](https://media.giphy.com/media/SvulfW0MQncFYzQEMT/giphy.gif)
+
+We also have new abilities, such as **resampling**
 
 To create our timeseries, we will count the number of gun offenses reported per day.
 
@@ -85,7 +102,7 @@ Take a moment to familiarize yourself with the differnece resampling aliases
 <tr><td>U, us</td><td>microseconds</td></tr>
 <tr><td>N</td><td>nanoseconds</td></tr></table>
 
-When resampling, we have to provide a rule to resample by, and an aggregate function.
+When resampling, we have to provide a rule to resample by, and an **aggregate function**.
 
 **To upsample** is to increase the frequency of the data of interest.  
 **To downsample** is to decrease the frequency of the data of interest.
@@ -126,30 +143,35 @@ A simple moving average consists of an average across a specified window of time
 
 The datetime index allows us to calculate simple moving averages via the rolling function.
 
-Let's calculate a week long rolling average
+The rolling function calculates a statistic across a moving **window**, which we can change with the window paraamter.
+
+Let's calculate a month long moving average
+
+This is simply the avarage of a datapoint and the previous three data points:
+
+As we can see from the plot below, simple moving average **smooths** out the series. Smoothing can help visualize the underlying pattern.  It can also be a very simple predictive model, where we just project the mean out into the future.
 
 The simple moving avereage tracks fairly well, but does not reach to the peaks and valleys of the original distribution.
+
+If we plot the moving average across 52 weeeks, we can see a smooth trend across a year.  The SMA reaches back 52 weeks, shwing that the steepest growth of gun crime started around the beginning of 2016 and leveled out at the beginning of 2017.
 
 # EWMA
 ## Exponentially Weighted Moving Average 
 
-We just showed how to calculate the SMA based on some window. However, basic SMA has some weaknesses:
+An alternative to SMA is the EWMA. The exponentially weighted average gives more weight to the points closer to the date in question.  With EWMA, the average will track more closely to the peaks and valleys. If there are extreme historical values in the dataset, the EWMA will be less skewed than the SMA.
 
-* Smaller windows will lead to more noise, rather than signal
-* It will always lag by the size of the window
-* It will never reach to full peak or valley of the data due to the averaging.
-* Extreme historical values can skew your SMA significantly
 
-To help fix some of these issues, we can use an <a href='https://en.wikipedia.org/wiki/Exponential_smoothing'>EWMA (Exponentially weighted moving average)</a>.
+$\large d^3 * X_{t-3} + d^2 * X_{t-2} + d^1 * X_{t-1}+ (1-d)*X_t$
 
-EWMA gives greater weight to values closer to the point of interest.
-
-Moving averages capture some information about our timeseries.  They show us how windows of past data points inform the data point in question.  They won't, however, allow us to predict in to the future beyond a straight line from the last point.  They also won't capture important trends in our dataset.
-
+The higher the $\alpha$ parameter, the closer the EWMA will be to the actual value of the point.
 
 Let's plot our rolling statistics with some different windows
 
-If we zoom in on our standard deviation, we can the variance of our data has quite a fluctuation at different moments in time.
+Again, if we zoom in to the year level, we can see peaks and valleys according to the seasons.  
+
+We can also plot rolling averages for the variance and standard deviation.
+
+If we zoom in on our standard deviation, we can the variance of our data has quite a fluctuation at different moments in time.  When we are building our models, we will want to remove this variability, or our models will have different performance at different times.  We will be unable, then to be confident our model will perform well at an arbitrary point in the future.
 
 
 ### Components of Time Series Data
