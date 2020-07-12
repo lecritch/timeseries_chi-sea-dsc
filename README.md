@@ -293,6 +293,172 @@ ts.head()
 
 
 
+Let's look at some summary stats:
+
+
+```python
+print(f"There are {ts.shape[0]} records in our timeseries")
+```
+
+    There are 85267 records in our timeseries
+
+
+
+```python
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Definitely some messy input of our Desciption data
+ts['Description'].value_counts()
+```
+
+
+
+
+    AGGRAVATED: HANDGUN                              26622
+    ARMED: HANDGUN                                   22813
+    UNLAWFUL POSS OF HANDGUN                         19131
+    AGGRAVATED - HANDGUN                              3124
+    RECKLESS FIREARM DISCHARGE                        2944
+    UNLAWFUL USE HANDGUN                              2396
+    ATTEMPT: ARMED-HANDGUN                            1996
+    UNLAWFUL POSSESSION - HANDGUN                     1413
+    ARMED - HANDGUN                                    995
+    AGGRAVATED: OTHER FIREARM                          673
+    UNLAWFUL POSS OTHER FIREARM                        611
+    POSS FIREARM/AMMO:NO FOID CARD                     454
+    UNLAWFUL USE OTHER FIREARM                         405
+    ARMED: OTHER FIREARM                               302
+    AGGRAVATED PO: HANDGUN                             294
+    UNLAWFUL USE - HANDGUN                             260
+    AGG PRO.EMP: HANDGUN                               182
+    ATTEMPT ARMED - HANDGUN                            102
+    UNLAWFUL USE - OTHER FIREARM                       100
+    AGGRAVATED DOMESTIC BATTERY: HANDGUN                66
+    ATTEMPT: ARMED-OTHER FIREARM                        62
+    AGGRAVATED - OTHER FIREARM                          44
+    UNLAWFUL SALE HANDGUN                               40
+    AGGRAVATED POLICE OFFICER - HANDGUN                 38
+    ATTEMPT AGG: HANDGUN                                27
+    UNLAWFUL POSSESSION - OTHER FIREARM                 24
+    POSSESS FIREARM / AMMUNITION - NO FOID CARD         23
+    AGG PRO.EMP: OTHER FIREARM                          23
+    DEFACE IDENT MARKS OF FIREARM                       16
+    ARMED - OTHER FIREARM                               15
+    AGGRAVATED PO: OTHER FIREARM                        15
+    AGGRAVATED DOMESTIC BATTERY - HANDGUN               15
+    AGGRAVATED PROTECTED EMPLOYEE - HANDGUN             12
+    UNLAWFUL SALE OTHER FIREARM                          7
+    UNLAWFUL SALE/DELIVERY OF FIREARM AT SCHOOL          7
+    ATTEMPT ARMED - OTHER FIREARM                        3
+    DEFACE IDENTIFICATION MARKS OF FIREARM               3
+    AGGRAVATED PROTECTED EMPLOYEE - OTHER FIREARM        2
+    UNLAWFUL SALE - DELIVERY OF FIREARM AT SCHOOL        2
+    ATTEMPT AGGRAVATED - HANDGUN                         1
+    AGGRAVATED DOMESTIC BATTERY: OTHER FIREARM           1
+    AGGRAVATED DOMESTIC BATTERY - OTHER FIREARM          1
+    ATTEMPT ARMED: HANDGUN                               1
+    ATTEMPT AGG: OTHER FIREARM                           1
+    AGGRAVATED POLICE OFFICER - OTHER FIREARM            1
+    Name: Description, dtype: int64
+
+
+
+
+```python
+height = ts['Description'].value_counts()[:10]
+offense_names = ts['Description'].value_counts()[:10].index
+
+fig, ax = plt.subplots()
+sns.barplot(height, offense_names, color='r', ax=ax)
+ax.set_title('Mostly Handgun offenses')
+```
+
+
+
+
+    Text(0.5, 1.0, 'Mostly Handgun offenses')
+
+
+
+
+![png](index_files/index_23_1.png)
+
+
+
+```python
+# Mostly non-domestic offenses
+
+fig, ax = plt.subplots()
+sns.barplot( ts['Domestic'].value_counts().index, 
+             ts['Domestic'].value_counts(),  
+             palette=[ 'r', 'b'], ax=ax
+           )
+
+ax.set_title("Overwhelmingly Non-Domestic Offenses");
+```
+
+
+![png](index_files/index_24_0.png)
+
+
+
+```python
+# Mostly non-domestic offenses
+arrest_rate = ts['Arrest'].value_counts()[1]/len(ts)
+
+fig, ax = plt.subplots()
+
+sns.barplot( ts['Arrest'].value_counts().index, 
+             ts['Arrest'].value_counts(), 
+             palette=['r', 'g'], ax=ax
+           )
+
+ax.set_title(f'{arrest_rate: .2%} of Total Cases\n Result in Arrest')
+```
+
+
+
+
+    Text(0.5, 1.0, ' 30.78% of Total Cases\n Result in Arrest')
+
+
+
+
+![png](index_files/index_25_1.png)
+
+
+The data extracts the year of offense as its own columns.
+
+
+```python
+fig, ax = plt.subplots()
+sns.barplot( ts['Year'].value_counts().index, 
+             ts['Year'].value_counts(),  
+             color= 'r', ax=ax
+           )
+
+ax.set_title("Offenses By Year");
+```
+
+
+![png](index_files/index_27_0.png)
+
+
+While this does show some interesting information that will be relevant to our time series analysis, we are going to get more granular.
+
+# Date Time Objects
+
+For time series modeling, the first step is to make sure that the index is a date time object.
+
+
+```python
+print(f"The original data, if we import with standard read_csv, is a {type(ts.index)}")
+```
+
+    The original data, if we import with standard read_csv, is a <class 'pandas.core.indexes.range.RangeIndex'>
+
+
 There are a few ways to **reindex** our series to datetime. 
 
 We can use the pd.to_datetime() method
@@ -309,7 +475,15 @@ Or, we can parse the dates directly on import
 ts =  pd.read_csv('data/Gun_Crimes_Heat_Map.csv', index_col='Date', parse_dates=True)
 ```
 
-We've covered some of the fun abilities of datetime objects, including being able to extract componenets of the date like so:
+
+```python
+print(f"Now our index is a {type(ts.index)}")
+```
+
+    Now our index is a <class 'pandas.core.indexes.datetimes.DatetimeIndex'>
+
+
+We've covered some of the fun abilities of datetime objects, including being able to extract components of the date like so:
 
 
 ```python
@@ -335,7 +509,42 @@ ts.index[0].year
 
 
 
-Now we will explore new abilities, such as **resampling**.
+We can easily see now see whether offenses happen, for example, during business hours.
+
+
+
+```python
+fig, ax = plt.subplots()
+
+ts['hour'] = ts.index
+ts['hour'] = ts.hour.apply(lambda x: x.hour)
+ts['business_hours'] = ts.hour.apply(lambda x: 9 <= x <= 1700 )
+
+bh_ratio = ts.business_hours.value_counts()[1]/len(ts)
+
+x = ts.business_hours.value_counts().index
+y = ts.business_hours.value_counts()
+sns.barplot(x=x, y=y)
+
+ax.set_title(f'{bh_ratio: .2%} of Offenses\n Happen Btwn 9 and 5')
+```
+
+
+
+
+    Text(0.5, 1.0, ' 73.17% of Offenses\n Happen Btwn 9 and 5')
+
+
+
+
+![png](index_files/index_41_1.png)
+
+
+### With a partner, take five minutes ot play around with the datetime object, and make a plot that answers a time based question about our data.
+
+![pair](https://media.giphy.com/media/SvulfW0MQncFYzQEMT/giphy.gif)
+
+We also have new abilities, such as **resampling**
 
 To create our timeseries, we will count the number of gun offenses reported per day.
 
@@ -347,7 +556,7 @@ ts.resample('D')
 
 
 
-    <pandas.core.resample.DatetimeIndexResampler object at 0x1a3e034748>
+    <pandas.core.resample.DatetimeIndexResampler object at 0x120a29630>
 
 
 
@@ -389,7 +598,7 @@ Take a moment to familiarize yourself with the differnece resampling aliases
 <tr><td>U, us</td><td>microseconds</td></tr>
 <tr><td>N</td><td>nanoseconds</td></tr></table>
 
-When resampling, we have to provide a rule to resample by, and an aggregate function.
+When resampling, we have to provide a rule to resample by, and an **aggregate function**.
 
 **To upsample** is to increase the frequency of the data of interest.  
 **To downsample** is to decrease the frequency of the data of interest.
@@ -433,8 +642,6 @@ ts.resample('D').count()
       <th>Domestic</th>
       <th>Beat</th>
       <th>...</th>
-      <th>Ward</th>
-      <th>Community Area</th>
       <th>FBI Code</th>
       <th>X Coordinate</th>
       <th>Y Coordinate</th>
@@ -443,6 +650,8 @@ ts.resample('D').count()
       <th>Latitude</th>
       <th>Longitude</th>
       <th>Location</th>
+      <th>hour</th>
+      <th>business_hours</th>
     </tr>
     <tr>
       <th>Date</th>
@@ -736,7 +945,7 @@ ts.resample('D').count()
     </tr>
   </tbody>
 </table>
-<p>2368 rows × 21 columns</p>
+<p>2368 rows × 23 columns</p>
 </div>
 
 
@@ -793,7 +1002,7 @@ ax.set_ylabel('Reported Gun Crimes')
 
 
 
-![png](index_files/index_38_1.png)
+![png](index_files/index_56_1.png)
 
 
 There seems to be some abnormal activity happening towards the end of our series.
@@ -870,7 +1079,7 @@ ax.set_title('Gun Crimes in Chicago with Deadliest Days Removed');
 ```
 
 
-![png](index_files/index_45_0.png)
+![png](index_files/index_63_0.png)
 
 
 Let's zoom in on that week again
@@ -893,7 +1102,7 @@ ax.set_title('We have some gaps now')
 
 
 
-![png](index_files/index_47_1.png)
+![png](index_files/index_65_1.png)
 
 
 The datetime object allows us several options of how to fill those gaps:
@@ -923,7 +1132,7 @@ ax2.set_title('Original')
 
 
 
-![png](index_files/index_49_1.png)
+![png](index_files/index_67_1.png)
 
 
 
@@ -950,7 +1159,7 @@ ax2.set_title('Original')
 
 
 
-![png](index_files/index_50_1.png)
+![png](index_files/index_68_1.png)
 
 
 
@@ -977,7 +1186,7 @@ ax2.set_title('Original')
 
 
 
-![png](index_files/index_51_1.png)
+![png](index_files/index_69_1.png)
 
 
 Let's proceed with the interpolated data
@@ -1014,12 +1223,12 @@ ts_weekly.plot()
 
 
 
-    <matplotlib.axes._subplots.AxesSubplot at 0x1a31de3eb8>
+    <matplotlib.axes._subplots.AxesSubplot at 0x1a303cbd30>
 
 
 
 
-![png](index_files/index_57_1.png)
+![png](index_files/index_75_1.png)
 
 
 # Visual Diagnostics with SMA and EWMA
@@ -1030,11 +1239,25 @@ A simple moving average consists of an average across a specified window of time
 
 The datetime index allows us to calculate simple moving averages via the rolling function.
 
-Let's calculate a week long rolling average
+The rolling function calculates a statistic across a moving **window**, which we can change with the window paraamter.
 
 
 ```python
-ts_weekly.rolling(7).mean()[:10]
+ts_weekly.rolling(window=4)
+```
+
+
+
+
+    Rolling [window=4,center=False,axis=0]
+
+
+
+Let's calculate a month long moving average
+
+
+```python
+ts_weekly.rolling(4).mean()[:10]
 ```
 
 
@@ -1043,14 +1266,56 @@ ts_weekly.rolling(7).mean()[:10]
     2014-01-05          NaN
     2014-01-12          NaN
     2014-01-19          NaN
-    2014-01-26          NaN
-    2014-02-02          NaN
-    2014-02-09          NaN
-    2014-02-16    22.130612
-    2014-02-23    19.795918
-    2014-03-02    19.469388
-    2014-03-09    18.632653
+    2014-01-26    24.835714
+    2014-02-02    22.607143
+    2014-02-09    22.142857
+    2014-02-16    20.035714
+    2014-02-23    17.607143
+    2014-03-02    16.214286
+    2014-03-09    16.607143
     Freq: W-SUN, dtype: float64
+
+
+
+This is simply the avarage of a datapoint and the previous three data points:
+
+
+```python
+ts_weekly[:4]
+```
+
+
+
+
+    2014-01-05    31.200000
+    2014-01-12    19.000000
+    2014-01-19    24.571429
+    2014-01-26    24.571429
+    Freq: W-SUN, dtype: float64
+
+
+
+
+```python
+ts_weekly[:4].mean() 
+```
+
+
+
+
+    24.835714285714285
+
+
+
+
+```python
+ts_weekly[:4].mean() == ts_weekly.rolling(4).mean()[3]
+```
+
+
+
+
+    True
 
 
 
@@ -1063,18 +1328,21 @@ fig, ax = plt.subplots(figsize=(10,5))
 
 ts_weekly.plot(ax=ax)
 sma_week.plot(ax=ax)
+
 ```
 
 
 
 
-    <matplotlib.axes._subplots.AxesSubplot at 0x1291999b0>
+    <matplotlib.axes._subplots.AxesSubplot at 0x1a307795f8>
 
 
 
 
-![png](index_files/index_62_1.png)
+![png](index_files/index_86_1.png)
 
+
+As we can see from the plot below, simple moving average **smooths** out the series. Smoothing can help visualize the underlying pattern.  It can also be a very simple predictive model, where we just project the mean out into the future.
 
 
 ```python
@@ -1090,31 +1358,115 @@ sma_week[-100:].plot(ax=ax, c='b')
 
 
 
-    <matplotlib.axes._subplots.AxesSubplot at 0x12a1e3898>
+    <matplotlib.axes._subplots.AxesSubplot at 0x1a30854c50>
 
 
 
 
-![png](index_files/index_63_1.png)
+![png](index_files/index_88_1.png)
 
 
 The simple moving avereage tracks fairly well, but does not reach to the peaks and valleys of the original distribution.
 
+If we plot the moving average across 52 weeeks, we can see a smooth trend across a year.  The SMA reaches back 52 weeks, shwing that the steepest growth of gun crime started around the beginning of 2016 and leveled out at the beginning of 2017.
+
+
+```python
+sma_week = ts_weekly.rolling(52).mean()
+
+fig, ax = plt.subplots(figsize=(10,5))
+
+ts_weekly.plot(ax=ax)
+sma_week.plot(ax=ax)
+```
+
+
+
+
+    <matplotlib.axes._subplots.AxesSubplot at 0x1a31667748>
+
+
+
+
+![png](index_files/index_91_1.png)
+
+
 # EWMA
 ## Exponentially Weighted Moving Average 
 
-We just showed how to calculate the SMA based on some window. However, basic SMA has some weaknesses:
+An alternative to SMA is the EWMA. The exponentially weighted average gives more weight to the points closer to the date in question.  With EWMA, the average will track more closely to the peaks and valleys. If there are extreme historical values in the dataset, the EWMA will be less skewed than the SMA.
 
-* Smaller windows will lead to more noise, rather than signal
-* It will always lag by the size of the window
-* It will never reach to full peak or valley of the data due to the averaging.
-* Extreme historical values can skew your SMA significantly
 
-To help fix some of these issues, we can use an <a href='https://en.wikipedia.org/wiki/Exponential_smoothing'>EWMA (Exponentially weighted moving average)</a>.
+$\large d^3 * X_{t-3} + d^2 * X_{t-2} + d^1 * X_{t-1}+ (1-d)*X_t$
 
-EWMA gives greater weight to values closer to the point of interest.
 
-Moving averages capture some information about our timeseries.  They show us how windows of past data points inform the data point in question.  They won't, however, allow us to predict in to the future beyond a straight line from the last point.  They also won't capture important trends in our dataset.
+```python
+ts_ex_ewm = ts_weekly.ewm(alpha=.5).mean()[:10]
+ts_ex_ewm
+```
+
+
+
+
+    2014-01-05    31.200000
+    2014-01-12    23.066667
+    2014-01-19    23.926531
+    2014-01-26    24.270476
+    2014-02-02    23.246083
+    2014-02-09    20.146032
+    2014-02-16    18.128684
+    2014-02-23    16.486499
+    2014-03-02    16.600615
+    2014-03-09    17.658483
+    Freq: W-SUN, dtype: float64
+
+
+
+The higher the $\alpha$ parameter, the closer the EWMA will be to the actual value of the point.
+
+
+```python
+ts_ex_ewm = ts_weekly.ewm(alpha=.99).mean()[:10]
+ts_ex_ewm
+```
+
+
+
+
+    2014-01-05    31.200000
+    2014-01-12    19.120792
+    2014-01-19    24.516928
+    2014-01-26    24.570884
+    2014-02-02    22.308566
+    2014-02-09    17.194514
+    2014-02-16    16.153374
+    2014-02-23    14.870105
+    2014-03-02    16.695844
+    2014-03-09    18.694101
+    Freq: W-SUN, dtype: float64
+
+
+
+
+```python
+ts_weekly[:10]
+```
+
+
+
+
+    2014-01-05    31.200000
+    2014-01-12    19.000000
+    2014-01-19    24.571429
+    2014-01-26    24.571429
+    2014-02-02    22.285714
+    2014-02-09    17.142857
+    2014-02-16    16.142857
+    2014-02-23    14.857143
+    2014-03-02    16.714286
+    2014-03-09    18.714286
+    Freq: W-SUN, dtype: float64
+
 
 
 Let's plot our rolling statistics with some different windows
@@ -1136,28 +1488,10 @@ ts_weekly.ewm(span=4).mean().dropna()[-100:].plot(ax=ax, c='b', label='EWMA')
 
 
 
-![png](index_files/index_69_1.png)
+![png](index_files/index_99_1.png)
 
 
-
-```python
-fig, ax = plt.subplots(figsize=(10,5))
-
-ts_weekly.plot(ax=ax, c='r', label='Original')
-ts_weekly.rolling(16).mean().dropna().plot(ax=ax, c='g', label='SMA')
-ts_weekly.ewm(span=16).mean().dropna().plot(ax=ax, c='b', label='EWMA')
-```
-
-
-
-
-    <matplotlib.axes._subplots.AxesSubplot at 0x1a3ee60b70>
-
-
-
-
-![png](index_files/index_70_1.png)
-
+Again, if we zoom in to the year level, we can see peaks and valleys according to the seasons.  
 
 
 ```python
@@ -1176,27 +1510,29 @@ ts_weekly.ewm(span=52).mean().dropna().plot(ax=ax, c='b', label='EWMA')
 
 
 
-![png](index_files/index_71_1.png)
+![png](index_files/index_101_1.png)
 
+
+We can also plot rolling averages for the variance and standard deviation.
 
 
 ```python
 fig, ax = plt.subplots(figsize=(10,5))
 
 ts_weekly.plot(ax=ax, c='r', label='Original')
-ts_weekly.rolling(4).std().dropna().plot(ax=ax, c='g', label='SMA')
-ts_weekly.ewm(span=4).std().dropna().plot(ax=ax, c='b', label='EWMA')
+ts_weekly.rolling(4).var().dropna().plot(ax=ax, c='g', label='SMA')
+ts_weekly.ewm(span=4).var().dropna().plot(ax=ax, c='b', label='EWMA')
 ```
 
 
 
 
-    <matplotlib.axes._subplots.AxesSubplot at 0x1a3efe97b8>
+    <matplotlib.axes._subplots.AxesSubplot at 0x1a32c59048>
 
 
 
 
-![png](index_files/index_72_1.png)
+![png](index_files/index_103_1.png)
 
 
 
@@ -1211,15 +1547,15 @@ ts_weekly.ewm(span=52).var().dropna().plot(ax=ax, c='b', label='EWMA')
 
 
 
-    <matplotlib.axes._subplots.AxesSubplot at 0x1a3fda4fd0>
+    <matplotlib.axes._subplots.AxesSubplot at 0x1a32e2f390>
 
 
 
 
-![png](index_files/index_73_1.png)
+![png](index_files/index_104_1.png)
 
 
-If we zoom in on our standard deviation, we can the variance of our data has quite a fluctuation at different moments in time.
+If we zoom in on our standard deviation, we can the variance of our data has quite a fluctuation at different moments in time.  When we are building our models, we will want to remove this variability, or our models will have different performance at different times.  We will be unable, then to be confident our model will perform well at an arbitrary point in the future.
 
 
 ### Components of Time Series Data
@@ -1249,7 +1585,7 @@ fig.set_size_inches(15, 8)
 
 
 
-![png](index_files/index_78_1.png)
+![png](index_files/index_109_1.png)
 
 
 ### Statistical stationarity: 
@@ -1316,7 +1652,7 @@ test_stationarity(ts_weekly, 52)
 ```
 
 
-![png](index_files/index_88_0.png)
+![png](index_files/index_119_0.png)
 
 
     Results of Dickey-Fuller Test:
@@ -1340,7 +1676,117 @@ A series of steps can be taken to stationarize your data - also known -  as remo
 One way to remove trends is to difference our data.  
 Differencing is performed by subtracting the previous observation (lag=1) from the current observation.
 
+
+```python
+ts_weekly.diff().dropna()[:5]
+```
+
+
+
+
+    2014-01-12   -12.200000
+    2014-01-19     5.571429
+    2014-01-26     0.000000
+    2014-02-02    -2.285714
+    2014-02-09    -5.142857
+    Freq: W-SUN, dtype: float64
+
+
+
+
+```python
+ts_weekly.diff().dropna().plot()
+```
+
+
+
+
+    <matplotlib.axes._subplots.AxesSubplot at 0x1a30a6cfd0>
+
+
+
+
+![png](index_files/index_125_1.png)
+
+
+
+```python
+ts_weekly[:5]
+```
+
+
+
+
+    2014-01-05    31.200000
+    2014-01-12    19.000000
+    2014-01-19    24.571429
+    2014-01-26    24.571429
+    2014-02-02    22.285714
+    Freq: W-SUN, dtype: float64
+
+
+
+
+```python
+ts_weekly.diff(2).dropna()[:5]
+```
+
+
+
+
+    2014-01-19   -6.628571
+    2014-01-26    5.571429
+    2014-02-02   -2.285714
+    2014-02-09   -7.428571
+    2014-02-16   -6.142857
+    Freq: W-SUN, dtype: float64
+
+
+
 Sometimes, we have to difference the differenced data (known as a second difference) to achieve stationary data. <b>The number of times we have to difference our data is the order of differencing</b> - we will use this information when building our model.
+
+
+```python
+#Second order difference:
+
+ts_weekly.diff().diff().dropna()[:5]
+```
+
+
+
+
+    2014-01-19    17.771429
+    2014-01-26    -5.571429
+    2014-02-02    -2.285714
+    2014-02-09    -2.857143
+    2014-02-16     4.142857
+    Freq: W-SUN, dtype: float64
+
+
+
+
+```python
+# We can also apply seasonal differences:
+    
+ts_weekly.diff(52).dropna()[:10]
+```
+
+
+
+
+    2015-01-04   -3.771429
+    2015-01-11    1.571429
+    2015-01-18    0.428571
+    2015-01-25    6.428571
+    2015-02-01   -0.285714
+    2015-02-08    1.142857
+    2015-02-15    0.714286
+    2015-02-22    2.714286
+    2015-03-01    3.714286
+    2015-03-08    5.857143
+    Freq: W-SUN, dtype: float64
+
+
 
 Let's difference our data and see if it improves Dickey-Fuller Test
 
@@ -1730,7 +2176,7 @@ test_stationarity(ts_weekly.diff().dropna(), 52)
 ```
 
 
-![png](index_files/index_97_0.png)
+![png](index_files/index_134_0.png)
 
 
     Results of Dickey-Fuller Test:
@@ -1749,8 +2195,3 @@ One we have achieved stationarity the next step in fitting a model to address an
 Sometimes, we have to difference the differenced data (known as a second difference) to achieve stationary data. <b>The number of times we have to difference our data is the order of differencing</b> - we will use this information when building our model.
 
 One we have achieved stationarity the next step in fitting a model is to address any autocorrelation that remains in the differenced series. 
-
-
-```python
-
-```
